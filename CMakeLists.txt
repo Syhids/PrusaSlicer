@@ -475,7 +475,11 @@ endif ()
 find_package(PNG REQUIRED)
 
 set(OpenGL_GL_PREFERENCE "LEGACY")
-find_package(OpenGL REQUIRED)
+if(SLIC3R_GUI)
+    find_package(OpenGL REQUIRED)
+else()
+    find_package(OpenGL QUIET)
+endif()
 
 # Find glew or use bundled version
 if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
@@ -483,7 +487,11 @@ if (SLIC3R_STATIC AND NOT SLIC3R_STATIC_EXCLUDE_GLEW)
     set(GLEW_VERBOSE ON)
 endif()
 
-find_package(GLEW REQUIRED)
+if(SLIC3R_GUI)
+    find_package(GLEW REQUIRED)
+else()
+    find_package(GLEW QUIET)
+endif()
 
 # Find the Cereal serialization library
 find_package(cereal REQUIRED)
@@ -571,14 +579,12 @@ if(SLIC3R_STATIC)
     set(USE_BLOSC TRUE)
 endif ()
 
-find_package(OpenVDB 5.0 COMPONENTS openvdb)
+find_package(OpenVDB 5.0 COMPONENTS openvdb QUIET)
 if(OpenVDB_FOUND)
     slic3r_remap_configs(IlmBase::Half RelWithDebInfo Release)
     slic3r_remap_configs(Blosc::blosc RelWithDebInfo Release)
 else ()
-    message(FATAL_ERROR "OpenVDB could not be found with the bundled find module. "
-                   "You can try to specify the find module location of your "
-                   "OpenVDB installation with the OPENVDB_FIND_MODULE_PATH cache variable.")
+    message(STATUS "OpenVDB not found - SLA hollowing/supports will be unavailable (OK for FFF CLI)")
 endif ()
 
 set(TOP_LEVEL_PROJECT_DIR ${PROJECT_SOURCE_DIR})
