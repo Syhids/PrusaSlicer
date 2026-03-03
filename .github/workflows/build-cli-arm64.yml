@@ -1,0 +1,115 @@
+name: Build PrusaSlicer CLI (ARM64)
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install cross-compilation toolchain
+        run: |
+          sudo dpkg --add-architecture arm64
+          
+          # Add arm64 sources
+          sudo tee /etc/apt/sources.list.d/arm64-cross.list << 'EOF'
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
+          EOF
+          
+          # Pin native arch for default repos
+          sudo tee /etc/apt/apt.conf.d/99-cross << 'EOF'
+          APT::Architectures { "amd64"; "arm64"; };
+          EOF
+          
+          sudo apt-get update
+          
+          # Cross compiler
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          
+          # Native build tools
+          sudo apt-get install -y cmake pkg-config m4 gettext
+          
+          # ARM64 libraries
+          sudo apt-get install -y \
+            libboost-all-dev:arm64 \
+            libcurl4-openssl-dev:arm64 \
+            libeigen3-dev \
+            libexpat1-dev:arm64 \
+            libgmp-dev:arm64 \
+            libmpfr-dev:arm64 \
+            libtbb-dev:arm64 \
+            libcereal-dev \
+            zlib1g-dev:arm64 \
+            libnlopt-dev:arm64 \
+            libnlopt-cxx-dev:arm64 \
+            libdbus-1-dev:arm64 \
+            libopenvdb-dev:arm64 \
+            libblosc-dev:arm64
+
+      - name: Configure (CLI only, cross-compile ARM64)
+        run: |
+          mkdir -p build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_SYSTEM_NAME=Linux \
+            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH \
+            -DSLIC3R_GUI=OFF \
+            -DSLIC3R_STATIC=OFF
+
+      - name: Build
+        run: |
+          cd build
+          make -j$(nproc) PrusaSlicer
+
+      - name: Package binary
+        run: |
+          cd build
+          aarch64-linux-gnu-strip src/PrusaSlicer || true
+          mkdir -p artifact
+          cp src/PrusaSlicer artifact/prusa-slicer
+          chmod +x artifact/prusa-slicer
+          cd artifact
+          tar czf prusa-slicer-cli-linux-arm64.tar.gz prusa-slicer
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prusa-slicer-cli-linux-arm64
+          path: build/artifact/prusa-slicer-cli-linux-arm64.tar.gz
+          retention-days: 90
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.9.2-fix-merge
+          name: "PrusaSlicer 2.9.2 — Fix --merge segfault (ARM64 CLI)"
+          body: |
+            PrusaSlicer 2.9.2 CLI-only build for Linux ARM64 (cross-compiled).
+
+            **Fix applied:** `&&` → `||` in `src/CLI/ProcessTransform.cpp` line 51.
+            Fixes segfault when using `--merge` flag ([upstream #14548](https://github.com/prusa3d/PrusaSlicer/issues/14548), [PR #15235](https://github.com/prusa3d/PrusaSlicer/pull/15235)).
+
+            ```bash
+            tar xzf prusa-slicer-cli-linux-arm64.tar.gz
+            sudo cp prusa-slicer /usr/local/bin/prusa-slicer
+            ```
+          files: build/artifact/prusa-slicer-cli-linux-arm64.tar.gz
+          draft: false
+          prerelease: false
