@@ -38,7 +38,8 @@ jobs:
                 libnlopt-dev libnlopt-cxx-dev \
                 libopenvdb-dev libblosc-dev \
                 libcgal-dev libdbus-1-dev \
-                libpng-dev libglew-dev
+                libpng-dev libglew-dev \
+                libopenexr-dev libilmbase-dev
 
               mkdir -p build && cd build
               cmake .. \
