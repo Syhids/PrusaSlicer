@@ -44,7 +44,8 @@ jobs:
                 libgmp-dev libmpfr-dev libtbb-dev \
                 libcereal-dev zlib1g-dev \
                 libnlopt-dev libnlopt-cxx-dev \
-                libpng-dev libcgal-dev
+                libpng-dev libcgal-dev \
+                libqhull-dev
 
               mkdir -p build && cd build
               cmake .. \
