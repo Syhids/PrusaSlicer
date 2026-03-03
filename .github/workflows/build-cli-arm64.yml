@@ -20,15 +20,19 @@ jobs:
         run: |
           sudo dpkg --add-architecture arm64
           
-          # Add arm64 sources
-          sudo tee /etc/apt/sources.list.d/arm64-cross.list << 'EOF'
+          # Pin existing repos to amd64 only (they don't carry arm64)
+          sudo sed -i 's/^deb \[/deb [arch=amd64 /' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+          sudo sed -i 's/^deb http/deb [arch=amd64] http/' /etc/apt/sources.list 2>/dev/null || true
+          # For DEB822 format (.sources files), add arch filter
+          sudo find /etc/apt/sources.list.d/ -name '*.sources' -exec \
+            sed -i '/^Architectures:/d; /^Types:/a Architectures: amd64' {} \; 2>/dev/null || true
+          
+          # Add arm64 sources from ports (the only mirror that carries arm64)
+          sudo tee /etc/apt/sources.list.d/arm64-ports.list << 'EOF'
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
           deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
-          EOF
-          
-          # Pin native arch for default repos
-          sudo tee /etc/apt/apt.conf.d/99-cross << 'EOF'
-          APT::Architectures { "amd64"; "arm64"; };
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-backports main restricted universe multiverse
           EOF
           
           sudo apt-get update
