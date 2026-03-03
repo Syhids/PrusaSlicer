@@ -39,8 +39,11 @@ jobs:
                 libopenvdb-dev libblosc-dev \
                 libcgal-dev libdbus-1-dev \
                 libpng-dev libglew-dev \
-                libopenexr-dev libilmbase-dev
+                libopenexr-dev libimath-dev
 
+              # Fix: PrusaSlicer bundled FindOpenVDB looks for IlmBase::Half
+              # which doesn't exist in OpenEXR v3 / Ubuntu 24.04.
+              # Imath provides Half now. Create an alias target.
               mkdir -p build && cd build
               cmake .. \
                 -DCMAKE_BUILD_TYPE=Release \
