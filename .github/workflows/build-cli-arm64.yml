@@ -16,80 +16,44 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install cross-compilation toolchain
-        run: |
-          sudo dpkg --add-architecture arm64
-          
-          # Pin existing repos to amd64 only (they don't carry arm64)
-          sudo sed -i 's/^deb \[/deb [arch=amd64 /' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-          sudo sed -i 's/^deb http/deb [arch=amd64] http/' /etc/apt/sources.list 2>/dev/null || true
-          # For DEB822 format (.sources files), add arch filter
-          sudo find /etc/apt/sources.list.d/ -name '*.sources' -exec \
-            sed -i '/^Architectures:/d; /^Types:/a Architectures: amd64' {} \; 2>/dev/null || true
-          
-          # Add arm64 sources from ports (the only mirror that carries arm64)
-          sudo tee /etc/apt/sources.list.d/arm64-ports.list << 'EOF'
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse
-          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-backports main restricted universe multiverse
-          EOF
-          
-          sudo apt-get update
-          
-          # Cross compiler
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-          
-          # Native build tools
-          sudo apt-get install -y cmake pkg-config m4 gettext
-          
-          # ARM64 libraries
-          sudo apt-get install -y \
-            libboost-all-dev:arm64 \
-            libcurl4-openssl-dev:arm64 \
-            libeigen3-dev \
-            libexpat1-dev:arm64 \
-            libgmp-dev:arm64 \
-            libmpfr-dev:arm64 \
-            libtbb-dev:arm64 \
-            libcereal-dev \
-            zlib1g-dev:arm64 \
-            libnlopt-dev:arm64 \
-            libnlopt-cxx-dev:arm64 \
-            libdbus-1-dev:arm64 \
-            libopenvdb-dev:arm64 \
-            libblosc-dev:arm64
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
 
-      - name: Configure (CLI only, cross-compile ARM64)
+      - name: Build in ARM64 container
         run: |
-          mkdir -p build && cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
-            -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
-            -DCMAKE_FIND_ROOT_PATH=/usr/aarch64-linux-gnu \
-            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
-            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
-            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=BOTH \
-            -DSLIC3R_GUI=OFF \
-            -DSLIC3R_STATIC=OFF
+          docker run --rm --platform linux/arm64 \
+            -v "${{ github.workspace }}:/src" \
+            -w /src \
+            arm64v8/ubuntu:24.04 bash -c '
+              set -e
+              apt-get update
+              apt-get install -y \
+                build-essential cmake git pkg-config m4 gettext \
+                libboost-all-dev libcurl4-openssl-dev \
+                libeigen3-dev libexpat1-dev \
+                libgmp-dev libmpfr-dev libtbb-dev \
+                libcereal-dev zlib1g-dev \
+                libnlopt-dev libnlopt-cxx-dev \
+                libopenvdb-dev libblosc-dev \
+                libcgal-dev
 
-      - name: Build
-        run: |
-          cd build
-          make -j$(nproc) PrusaSlicer
+              mkdir -p build && cd build
+              cmake .. \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DSLIC3R_GUI=OFF \
+                -DSLIC3R_STATIC=OFF
 
-      - name: Package binary
-        run: |
-          cd build
-          aarch64-linux-gnu-strip src/PrusaSlicer || true
-          mkdir -p artifact
-          cp src/PrusaSlicer artifact/prusa-slicer
-          chmod +x artifact/prusa-slicer
-          cd artifact
-          tar czf prusa-slicer-cli-linux-arm64.tar.gz prusa-slicer
+              make -j$(nproc) PrusaSlicer
+
+              strip src/PrusaSlicer || true
+              mkdir -p artifact
+              cp src/PrusaSlicer artifact/prusa-slicer
+              chmod +x artifact/prusa-slicer
+              cd artifact
+              tar czf prusa-slicer-cli-linux-arm64.tar.gz prusa-slicer
+            '
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -105,7 +69,7 @@ jobs:
           tag_name: v2.9.2-fix-merge
           name: "PrusaSlicer 2.9.2 — Fix --merge segfault (ARM64 CLI)"
           body: |
-            PrusaSlicer 2.9.2 CLI-only build for Linux ARM64 (cross-compiled).
+            PrusaSlicer 2.9.2 CLI-only build for Linux ARM64.
 
             **Fix applied:** `&&` → `||` in `src/CLI/ProcessTransform.cpp` line 51.
             Fixes segfault when using `--merge` flag ([upstream #14548](https://github.com/prusa3d/PrusaSlicer/issues/14548), [PR #15235](https://github.com/prusa3d/PrusaSlicer/pull/15235)).
