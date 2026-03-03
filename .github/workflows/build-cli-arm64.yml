@@ -37,7 +37,8 @@ jobs:
                 libcereal-dev zlib1g-dev \
                 libnlopt-dev libnlopt-cxx-dev \
                 libopenvdb-dev libblosc-dev \
-                libcgal-dev
+                libcgal-dev libdbus-1-dev \
+                libpng-dev libglew-dev
 
               mkdir -p build && cd build
               cmake .. \
