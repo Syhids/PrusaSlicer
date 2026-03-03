@@ -245,7 +245,10 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
 
-    find_package(DBus1 REQUIRED)
+    find_package(DBus1 QUIET)
+    if(NOT DBus1_FOUND)
+      message(STATUS "DBus1 not found - OK for CLI-only build")
+    endif()
 endif()
 
 if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUXX)
