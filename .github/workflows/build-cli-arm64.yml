@@ -75,16 +75,20 @@ jobs:
         if: github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v2.9.2-fix-merge
-          name: "PrusaSlicer 2.9.2 — Fix --merge segfault (ARM64 CLI)"
+          tag_name: v2.9.4-fix-merge
+          name: "PrusaSlicer 2.9.4 — Fix --merge segfault"
           body: |
-            PrusaSlicer 2.9.2 CLI-only build for Linux ARM64.
+            PrusaSlicer 2.9.4 CLI-only builds for Linux.
 
             **Fix applied:** `&&` → `||` in `src/CLI/ProcessTransform.cpp` line 51.
             Fixes segfault when using `--merge` flag ([upstream #14548](https://github.com/prusa3d/PrusaSlicer/issues/14548), [PR #15235](https://github.com/prusa3d/PrusaSlicer/pull/15235)).
 
+            **Available binaries:**
+            - `prusa-slicer-cli-linux-x64.tar.gz` — x86_64
+            - `prusa-slicer-cli-linux-arm64.tar.gz` — ARM64
+
             ```bash
-            tar xzf prusa-slicer-cli-linux-arm64.tar.gz
+            tar xzf prusa-slicer-cli-linux-<arch>.tar.gz
             sudo cp prusa-slicer /usr/local/bin/prusa-slicer
             ```
           files: build/artifact/prusa-slicer-cli-linux-arm64.tar.gz
