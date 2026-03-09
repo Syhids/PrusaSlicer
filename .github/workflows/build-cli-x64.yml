@@ -44,12 +44,12 @@ jobs:
             -DSLIC3R_STATIC=ON \
             -DSLIC3R_BUILD_TESTS=OFF
           make -j$(nproc) PrusaSlicer
-          strip src/PrusaSlicer || true
 
       - name: Package artifact
         run: |
+          strip build/src/prusa-slicer || true
           mkdir -p build/artifact
-          cp build/src/PrusaSlicer build/artifact/prusa-slicer
+          cp build/src/prusa-slicer build/artifact/prusa-slicer
           chmod +x build/artifact/prusa-slicer
           cd build/artifact
           tar czf prusa-slicer-cli-linux-x64.tar.gz prusa-slicer
